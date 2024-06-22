@@ -1,0 +1,21 @@
+﻿[MESSAGES]
+1013638081=Salir
+1505750566=Iniciar sesión como
+1964225139=Iniciar sesión
+2979619509=Acerca de
+2556291242=Archivos
+2036496738=Por
+139722252=Comentarios
+3692618169=Anterior
+3202639182=Siguiente
+594068880=Sin comentarios todavía
+2123305544=Ocultar comentarios
+4159193577=Añadir comentario
+1823740243=Mostrar comentarios
+2496623445=Usuario
+2298719737=Información sobre
+939399395=No hay más artículos correspondientes a este criterio de investigación.
+474723031=Leer más
+261574957=Escrito por
+3406419139=Nombre de usuario
+3577467079=Contraseña

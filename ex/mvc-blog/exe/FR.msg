@@ -1,0 +1,21 @@
+﻿[Messages]
+1013638081=Déconnexion
+1505750566=Connecté en tant que
+1964225139=Connexion
+2979619509=A propos de
+2556291242=Archives
+2036496738=par
+139722252=Commenté
+3692618169=Précédent
+3202639182=Suivant
+594068880=Pas encore de commentaire
+2123305544=Cacher les commentaires
+4159193577=Ajouter un commentaire
+1823740243=Afficher les commentaires
+2496623445=Auteur
+2298719737=Information sur
+939399395=Il n'y a plus d'article correspondant à ce critère de recherche.
+474723031=Lire la suite
+261574957=Écrit par
+3406419139=Nom d'utilisateur
+3577467079=Mot de passe
