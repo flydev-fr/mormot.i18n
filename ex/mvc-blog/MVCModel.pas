@@ -23,7 +23,8 @@ uses
   mormot.orm.core,
   mormot.orm.base,
   mormot.rest.core,
-  mormot.rest.server;
+  mormot.rest.server,
+  mormot.i18n;
 
 type
   TOrmBlogInfo = class(TOrm)
@@ -66,6 +67,7 @@ type
     fVerified: boolean;
     fHashedPassword: RawUtf8;
     fLogonName: RawUtf8;
+    fLanguage: TLanguages;
   public
     procedure SetPlainPassword(const PlainPassword: RawUtf8);
     function CheckPlainPassword(const PlainPassword: RawUtf8): boolean;
@@ -85,6 +87,7 @@ type
       index 64 read fHashedPassword write fHashedPassword;
     property Verified: boolean
       read fVerified write fVerified;
+    property Language: TLanguages read FLanguage write FLanguage;
   end;
 
   TOrmAuthorRight = (
@@ -253,7 +256,6 @@ begin
   fHashedPassword := Sha256(SALT + LogonName + PlainPassword);
 end;
 
-
 { TOrmAuthor }
 
 class procedure TOrmAuthor.InitializeTable(const Server: IRestOrmServer;
@@ -271,6 +273,7 @@ begin
       Auth.FamilyName := 'Synopse';
       Auth.Verified := true;
       Auth.Rights := [Low(TOrmAuthorRight)..High(TOrmAuthorRight)];
+      Auth.Language := TLanguages.lngEnglish;
       Server.Add(Auth, true);
     finally
       Auth.Free;
@@ -470,7 +473,7 @@ begin
   for f := 0 to fFieldCount - 1 do
   begin
     SetResultsSafe(f, pointer(fFields[f]));
-    SetFieldType(f, sftUTF8Text);
+    SetFieldType(f, sftUtf8Text);
   end;
   for r := 1 to fRowCount do
   begin

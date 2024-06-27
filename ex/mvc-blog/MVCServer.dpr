@@ -7,7 +7,7 @@ program MVCServer;
 
 {$ifdef OSWINDOWS}
   {$apptype console}
-  {$R ..\..\src\mormot.win.default.manifest.res}  // from mORMot 2 /src folder
+  //{$R ..\..\src\mormot.win.default.manifest.res}  // from mORMot 2 /src folder
 {$endif OSWINDOWS}
 
 uses
@@ -28,12 +28,11 @@ uses
   mormot.rest.sqlite3,
   mormot.rest.server,
   mormot.core.log;
-
-
+               
 var
   aModel: TOrmModel;
   aServer: TRestServerDB;
-  aApplication: TBlogApplication;
+  //aApplication: TBlogApplication; {declared in MVCViewModel.pas}
   aHTTPServer: TRestHttpServer;
   LogFamily: TSynLogFamily;
 
@@ -44,6 +43,7 @@ begin
   LogFamily.AutoFlushTimeOut := 5;
   LogFamily.HighResolutionTimestamp := true;
   //LogFamily.EchoToConsole := LOG_VERBOSE;
+  //LogFamily.NoFile := true;
   aModel := CreateModel;
   try
     aServer := TRestServerDB.Create(

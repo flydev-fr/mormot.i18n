@@ -92,7 +92,14 @@ h6, .h6 {
   font-size: 20px;
   color: #999;
 }
-
+.fi {
+  aspect-ratio: 4 / 3;
+}
+.flag-select {
+  background-repeat: no-repeat;
+  background-position: left center;
+  padding-left: 30px;
+}
 
 /*
  * Main column and sidebar layout

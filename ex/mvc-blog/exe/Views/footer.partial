@@ -25,5 +25,39 @@
       <small>{{{main.blog.copyright}}} - page generated in [[GENERATION_TIME_TAG]]</small></p>
       <p><a href="#">Back to top</a></p>
     </div>
+    
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script>
+    $(document).ready(function() {
+      // Get the current language from the server-side variable
+      var currentLanguage = '{{main.language}}'.toUpperCase(); // This should be replaced with the server-side variable, e.g., '<%= languageAbr %>'
+        console.log("currentLanguage",currentLanguage);
+
+      function updateCurrentLanguage() {
+        var initialFlagClass = $('.language-option[data-value="' + currentLanguage + '"]').data('flag');
+        // Replace 'fi-en' with 'fi-us'
+        if (initialFlagClass === 'fi-en') {
+          initialFlagClass = 'fi-us';
+        } 
+        else if (initialFlagClass === 'fi-uk') {
+          initialFlagClass = 'fi-ua';
+        }
+        var initialLanguageText = $('.language-option[data-value="' + currentLanguage + '"]').text();
+        $('#current-language').html('<i class="fi ' + initialFlagClass + '"></i> ' + initialLanguageText);
+        $('#language-input').val(currentLanguage);
+      }
+
+      // Initialize the current language display
+      updateCurrentLanguage();
+
+      $('.language-option').on('click', function(e) {
+        e.preventDefault();
+        currentLanguage = $(this).data('value');
+        updateCurrentLanguage();
+        $('#languageForm').submit();
+      });
+    });
+    </script>
   </body>
 </html>

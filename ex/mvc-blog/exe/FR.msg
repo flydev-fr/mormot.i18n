@@ -1,6 +1,7 @@
 ﻿[Messages]
 1013638081=Déconnexion
-1505750566=Connecté en tant que
+1505750566=Connecté en tant que %s
+1932202822=Connecté en tant que %s
 1964225139=Connexion
 2979619509=A propos de
 2556291242=Archives

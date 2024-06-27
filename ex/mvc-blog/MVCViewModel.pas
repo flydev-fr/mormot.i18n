@@ -14,8 +14,7 @@ interface
   {$WARN 5092 off : variable of a managed type does not seem to be initialized}
 {$endif FPC}
 
-uses
-  sysutils,
+uses  
   contnrs,
   variants,
   mormot.core.base,
@@ -27,6 +26,7 @@ uses
   mormot.core.test,
   mormot.core.rtti,
   mormot.core.threads,
+  mormot.core.unicode,
   mormot.db.core,
   mormot.rest.core,
   mormot.rest.server,
@@ -34,6 +34,7 @@ uses
   mormot.rest.sqlite3,
   mormot.orm.core,
   mormot.orm.base,
+  mormot.i18n,
   MVCModel;
 
 type
@@ -73,6 +74,8 @@ type
     function ArticleCommit(
       ID: TID;
       const Title, Content: RawUtf8): TMvcAction;
+    function LanguageChange(
+      const LanguageAbr: RawUtf8): TMvcAction;
   end;
 
   /// session information which will be stored on client side within a cookie
@@ -85,6 +88,7 @@ type
     AuthorName: RawUtf8;
     AuthorID: cardinal;
     AuthorRights: TOrmAuthorRights;
+    Language: Integer;
   end;
 
   /// implements the ViewModel/Controller of this BLOG web site
@@ -135,19 +139,26 @@ type
     function ArticleCommit(
       ID: TID;
       const Title, Content: RawUtf8): TMvcAction;
+    function LanguageChange(
+      const LanguageAbr: RawUtf8): TMvcAction;
+      
     property HasFts: boolean
       read fHasFts write fHasFts;
   end;
 
   TMVCViewsMustacheI18n = class(TMVCViewsMustache)
+    FOnTranslate: TOnStringTranslate;
     procedure Render(methodIndex: Integer; const Context: variant; var View: TMVCView); override;
   end;
+
+var
+  aApplication: TBlogApplication;
                
 implementation
 
 uses
-  mormot.core.mustache,
-  mormot.i18n;
+  sysutils,
+  mormot.core.mustache;
 
 resourcestring
   sErrorInvalidLogin = 'Wrong logging information';
@@ -160,21 +171,43 @@ resourcestring
 
 procedure TMVCViewsMustacheI18n.Render(methodIndex: Integer;
   const Context: variant; var View: TMVCView);
-begin
-  //inherited;
-  
-  View.Content := GetRenderer(methodIndex, View).Render(
-    Context, fViewPartials, fViewHelpers, Language.Translate);
+var
+  i: mormot.i18n.TLanguages;
+  LanguageFile: TLanguageFile;
+  Sessionlanguage: RawUtf8;
+begin 
+  LanguageFile := nil;
 
-  if trim(View.Content) = '' then
-  with fViews[methodIndex] do begin
-    Locker.Enter;
-    Mustache := nil; 
-    Locker.Leave;
-    raise EMVCException.CreateUTF8(
-      '%.Render(''%''): Void "%" Template - please put some content!',
-        [self, ShortFileName, FileName]);
-  end;  
+  // set default language rendering
+  FOnTranslate := Language.Translate;
+  if VariantToText(Context.main.language, Sessionlanguage) then
+  begin
+    i := LanguageAbrToIndex(Sessionlanguage);
+    if i <> CurrentLanguage.Index then
+    begin
+      LanguageFile := TLanguageFile.Create(i);
+      if Assigned(LanguageFile) then      
+        FOnTranslate := LanguageFile.Translate;
+    end;
+  end;
+  
+  try
+    View.Content := GetRenderer(methodIndex, View).Render(
+      Context, fViewPartials, fViewHelpers, FOnTranslate);
+  
+    if trim(View.Content) = '' then
+    with fViews[methodIndex] do begin
+      Locker.Enter;
+      Mustache := nil; 
+      Locker.Leave;
+      raise EMVCException.CreateUTF8( //=>
+        '%.Render(''%''): Void "%" Template - please put some content!',
+          [self, ShortFileName, FileName]);
+    end;  
+  finally
+    if Assigned(LanguageFile) then
+      FreeAndNil(LanguageFile);  
+  end;
 end;
 
 { TBlogApplication }
@@ -195,7 +228,7 @@ begin
   LParams.Helpers := TSynMustache.HelpersGetStandardList;
   LViews := TMVCViewsMustacheI18n.Create(Factory.InterfaceTypeInfo,
     LParams, aServer.LogClass);
-  
+      
   // publish IBlogApplication using Mustache Views (TMvcRunOnRestServer default)
   fMainRunner := TMvcRunOnRestServer.Create(Self, nil, '', LViews).
     SetCache('Default', cacheRootIfNoSession, 15).
@@ -383,15 +416,82 @@ begin
       end;
 end;
 
+function TBlogApplication.Login(const LogonName, PlainPassword: RawUtf8): TMvcAction;
+var
+  Author: TOrmAuthor;
+  SessionInfo: TCookieData;
+begin
+  if CurrentSession.CheckAndRetrieve(@SessionInfo, TypeInfo(TCookieData)) > 0 then
+    if SessionInfo.AuthorID > 0 then
+    begin
+      GotoError(result, HTTP_BADREQUEST);
+      exit;
+    end;
+  
+  Author := TOrmAuthor.Create(RestModel.Orm, 'LogonName=?', [LogonName]);
+  try    
+    if (Author.ID <> 0) and
+       Author.CheckPlainPassword(PlainPassword) then
+    begin
+      SessionInfo.AuthorName := Author.LogonName;
+      SessionInfo.AuthorID := Author.ID;
+      SessionInfo.AuthorRights := Author.Rights;
+      SessionInfo.Language := ord(Author.Language);
+      CurrentSession.Initialize(@SessionInfo, TypeInfo(TCookieData));
+      GotoDefault(result);
+    end
+    else
+    begin
+      GotoError(result, sErrorInvalidLogin);
+    end;
+  finally
+    Author.Free;
+  end;
+end;
+
+function TBlogApplication.languageChange(const LanguageAbr: RawUtf8): TMvcAction;
+var
+  SessionInfo: TCookieData;
+  i: mormot.i18n.TLanguages;
+begin    
+  if LanguageAbr <> '' then
+  begin
+    i := LanguageAbrToIndex(languageAbr);
+    if CurrentSession.CheckAndRetrieve(@SessionInfo, TypeInfo(TCookieData)) = 0 then 
+      SessionInfo.AuthorID := 0;
+    SessionInfo.Language := ord(i);    
+    CurrentSession.Initialize(@SessionInfo, TypeInfo(TCookieData));
+  end;
+
+  GotoView(result, 'Default', ['language', LanguageAbr]);
+end;
+
 procedure TBlogApplication.GetViewInfo(MethodIndex: integer; out info: variant);
 var
   archives: variant; // needed to circumvent memory leak bug on FPC
-begin
-  inherited GetViewInfo(MethodIndex, info);
+  SessionInfo: TCookieData;
+  SessId: integer;
+  SessionVar: variant;
+  LangAbr: RawUtf8;
+begin    
+  inherited GetViewInfo(MethodIndex, info);     
+
+  if CurrentSession.CheckAndRetrieve(@SessionInfo, TypeInfo(TCookieData)) = 0 then
+    LangAbr := LanguageAbr[CurrentLanguage.Index]
+  else
+  begin
+    LangAbr := LanguageAbr[mormot.i18n.TLanguages(SessionInfo.Language)];
+  end;
+
+  // do not retrieve session for guest
+  if SessionInfo.AuthorID > 0 then  
+    SessionVar := CurrentSession.CheckAndRetrieveInfo(TypeInfo(TCookieData));
+  
   _ObjAddProps(['blog', fBlogMainInfo,
-                'session',
-                  CurrentSession.CheckAndRetrieveInfo(TypeInfo(TCookieData))],
+                'language', LangAbr,
+                'session', SessionVar],
                info);
+               
   if not fDefaultData.AddExistingProp('archives', info) then
   begin
     archives := RestModel.Orm.RetrieveDocVariantArray(TOrmArticle, '',
@@ -534,34 +634,6 @@ begin
     raise EMvcApplication.CreateGotoError(HTTP_NOTFOUND);
 end;
 
-function TBlogApplication.Login(const LogonName, PlainPassword: RawUtf8): TMvcAction;
-var
-  Author: TOrmAuthor;
-  SessionInfo: TCookieData;
-begin
-  if CurrentSession.CheckAndRetrieve <> 0 then
-  begin
-    GotoError(result, HTTP_BADREQUEST);
-    exit;
-  end;
-  Author := TOrmAuthor.Create(RestModel.Orm, 'LogonName=?', [LogonName]);
-  try
-    if (Author.ID <> 0) and
-       Author.CheckPlainPassword(PlainPassword) then
-    begin
-      SessionInfo.AuthorName := Author.LogonName;
-      SessionInfo.AuthorID := Author.ID;
-      SessionInfo.AuthorRights := Author.Rights;
-      CurrentSession.Initialize(@SessionInfo, TypeInfo(TCookieData));
-      GotoDefault(result);
-    end
-    else
-      GotoError(result, sErrorInvalidLogin);
-  finally
-    Author.Free;
-  end;
-end;
-
 function TBlogApplication.Logout: TMvcAction;
 begin
   CurrentSession.Finalize;
@@ -675,8 +747,9 @@ initialization
   // manual definition mandatory only if Delphi 2010 RTTI is not available
   Rtti.RegisterType(TypeInfo(TOrmAuthorRights));
   Rtti.RegisterFromText(TypeInfo(TCookieData),
-    'AuthorName:RawUtf8 AuthorID:cardinal AuthorRights:TOrmAuthorRights');
+    'AuthorName:RawUtf8 AuthorID:cardinal AuthorRights:TOrmAuthorRights Language:integer');
   {$endif HASEXTRECORDRTTI}
 
 end.
+
 

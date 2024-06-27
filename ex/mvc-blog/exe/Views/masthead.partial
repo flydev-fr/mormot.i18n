@@ -12,26 +12,26 @@
 			<div class="navbar-left">
               <a class="navbar-brand" href="default">{{main.blog.title}}</a>
 			</div>
-			<div class="navbar-form navbar-right">
+			<div class="navbar-form navbar-right"  style="display: flex; gap: 2px;">
 			  <form action="articleMatch" method="post">
-				<div class="form-group">
-				<input type="text" class="form-control" name="match" placeholder="Search Expression">
+				<div class="form-group" style="max-width: 120px;">
+                    <input type="text" class="form-control" name="match" placeholder="Search Expression">
 				</div>
 			  </form>
+			  
 			</div>
         </div>
         <center>
             <div class="navbar-collapse collapse" id="navbar-main">
+              <div class="navbar-right" style="display: grid; grid-auto-flow: column; align-items: center;">
 				{{#main.session}}
-				<div class="navbar-right">
-					<form class="navbar-form" action="logout">
-					<span class="navbar-text">{{"Signed in as}} <a href=AuthorView?id={{AuthorID}}>{{AuthorName}}</a></span>
-					<button class="btn" type="submit">{{"Logout}}</button>
-					</form>
-				</div>
+                    <form class="navbar-form" action="logout" style="grid-column: auto;display: inline-fllex;align-items: center;">
+                      <span class="navbar-text">{{"Signed in as}} <a href=AuthorView?id={{AuthorID}}>{{AuthorName}}</a></span>
+                      <button class="btn" type="submit">{{"Logout}}</button>
+                    </form>				
 				{{/main.session}}
 				{{^main.session}}
-                <form class="navbar-form navbar-right" action="login" method="post">
+                <form class="navbar-form" action="login" method="post" style="grid-column: auto">
 				  <div class="form-group">
                   <input type="text" class="form-control" name="LogonName" placeholder="{{"Username}}">
                   <input type="password" class="form-control" name="PlainPassword" placeholder="{{"Password}}">
@@ -39,9 +39,30 @@
                   <button type="submit" class="btn btn-default">{{"Sign In}}</button>
                 </form>
 				{{/main.session}}
+				<form id="languageForm" action="languageChange" method="post" class="form-horizontal" style="grid-column: auto">
+                  <div class="btn-group" style="display: inline-flex;">
+                    <a class="btn btn-primary" id="current-language" href="#" style="display: flex;"><i class="fi fi-cn" style="margin-right: 1px;"></i></a>
+                    <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" style="height:12px">
+                        <path d="M137.4 374.6c12.5 12.5 32.8 12.5 45.3 0l128-128c9.2-9.2 11.9-22.9 6.9-34.9s-16.6-19.8-29.6-19.8L32 192c-12.9 0-24.6 7.8-29.6 19.8s-2.2 25.7 6.9 34.9l128 128z"/>
+                      </svg>
+                    </a>
+                    <ul class="dropdown-menu">
+                      <li><a href="#" class="language-option" data-value="ZH" data-flag="fi-cn"><i class="fi fi-cn"></i> Chinese</a></li>
+                      <li><a href="#" class="language-option" data-value="EN" data-flag="fi-en"><i class="fi fi-us"></i> English</a></li>
+                      <li><a href="#" class="language-option" data-value="FR" data-flag="fi-fr"><i class="fi fi-fr"></i> French</a></li>
+                      <li><a href="#" class="language-option" data-value="ES" data-flag="fi-es"><i class="fi fi-es"></i> Spanish</a></li>
+                      <li><a href="#" class="language-option" data-value="UK" data-flag="fi-ua"><i class="fi fi-ua"></i> Ukranian</a></li>
+                      <!-- Add more languages as needed -->
+                    </ul>
+                  </div>
+                  <input type="hidden" name="languageAbr" id="language-input" value="{{main.language}}">
+              </form>
+              </div>
             </div>
         </center>
     </div>
     </div>
     </div>
     <div class="container">
+    

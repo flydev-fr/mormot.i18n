@@ -12,3 +12,6 @@
     <title>{{pageTitle}}{{^pageTitle}}{{main.blog.title}} {{pageName}}{{/pageTitle}}</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
     <link href=".static/blog.css" rel="stylesheet">
+    <link href=".static/flag-icons.min.css" rel="stylesheet" />
+    
+    
