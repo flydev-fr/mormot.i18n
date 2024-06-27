@@ -24,7 +24,7 @@ interface
           
 {$I mormot.defines.inc} // define HASINLINE CPU32 CPU64 OWNNORMTOUPPER
 
-{$ifdef CPU64}
+{$ifdef CPUX64}
   {$define PUREPASCAL}
 {$endif}
 
@@ -49,58 +49,43 @@ interface
   // just before an OnCreate handler would be called
 {$endif}
 
-{$ifdef LVCL}
-  // the LVCL don't have TForm.DoCreate and such
-  // -> it's easier to explicitely change the captions from code in LVCL
-  {$undef USEFORMCREATEHOOK}
-{$endif}
-           
+{.$undef USEFORMCREATEHOOK}
 
 uses
   {$I mormot.uses.inc}
   
 {$ifdef MSWINDOWS}
   Windows,
-  {$ifdef FPC}
-  LCLIntf, LCLType, LMessages,
-  {$else}
-  Messages,
+  {$ifdef LCL}
+  LCLIntf,
   {$endif}
 {$else MSWINDOWS}
-  {$ifdef KYLIX3}
-    Types,
-    LibC,
-    SynKylix,
-  {$endif KYLIX3}
-  {$ifdef FPC}
+  {$ifdef FPC_POSIX}
     BaseUnix,
-  {$endif FPC}
+  {$endif FPC_POSIX}
 {$endif MSWINDOWS}
   Classes,
   SysUtils,
-{$ifndef LVCL}
-  SyncObjs, // for TEvent and TCriticalSection
-  Contnrs,  // for TObjectList
   {$ifdef HASINLINE}
     Types,
+    {$ifdef LCL}
+      LCLType,
+    {$endif}
   {$endif HASINLINE}
-{$endif LVCL}
 {$ifndef NOVARIANTS}
   Variants,
 {$endif NOVARIANTS}
   {$ifdef USEFORMCREATEHOOK}
-  {$ifndef LVCL}
-  Vcl.Menus,
+  {$ifdef LCL}
+  Menus,StdCtrls,DateUtils,
   {$else}
-  Menus
+  Vcl.Menus,
   {$endif}
   {$endif USEFORMCREATEHOOK}
-  {$ifndef LVCL}
-  Vcl.StdCtrls,
-  Vcl.Forms,
+  {$ifndef LCL}
+  vcl.Forms,Vcl.StdCtrls,Vcl.ExtCtrls,
   {$else}
-  StdCtrls,
-  Forms,
+  Interfaces, LResources, Forms, Dialogs, ImgList,
   {$endif}
   mormot.core.base,
   mormot.core.os,
@@ -118,11 +103,14 @@ uses
 {$undef ENHANCEDRTL} // no version of our Enhanced RTL exists for Delphi 2009 and up
 {$endif}
 
-{$ifdef LVCL}
-// LVCL system.pas doesn't implement LoadResStringTranslate() and won't need it
-{$define ENHANCEDRTL}
+{$ifdef LCL}
+type
+  TMyResStringRec = record
+    Identifier: Integer;
+    Module: PLongint;
+  end;
+  PMyResStringRec = ^TMyResStringRec;
 {$endif}
-
 
 {$ifdef CPUINTEL}
 type
@@ -160,11 +148,15 @@ type
     lngSlovak, lngSlovenian, lngAlbanian, lngSerbian, lngSwedish, lngSyriac,
     lngTurkish, lngTahitian, lngUkrainian, lngVietnamese, lngChinese, lngDutch,
     lngThai, lngBulgarian, lngBelarusian, lngEstonian, lngLatvian, lngMacedonian,
-    lngPashtol );
+    lngPashtol {$ifdef FPC},lngDummy{$endif});
 
 const
   /// value stored into a TLanguages enumerate to mark no language selected yet
+  {$ifdef FPC} // can't get rid of range checking with laz/fpc[-2_2]
+  LANGUAGE_NONE = TLanguages(lngDummy);
+  {$else}
   LANGUAGE_NONE = TLanguages(255);
+  {$endif}
 
   /// ISO 639-1 compatible abbreviations (not to be translated):
   LanguageAbr: packed array[TLanguages] of RawByteString { 4bytes-aligned }
@@ -172,14 +164,15 @@ const
       'en','es','fa','fi','fr','ga','gd','am','hr','hu','hy','id','ie','is',
       'it','ja','ko','bo','lt','mg','no','oc','pt','pl','ro','ru','sa','sk',
       'sl','sq','sr','sv','sy','tr','ty','uk','vi','zh','nl', { end of Ictus3 values }
-      'th','bg','be','et','lv','mk','ap');
+      'th','bg','be','et','lv','mk','ap' {$ifdef FPC},'--'{$endif});
 
   /// to sort in alphabetic order : LanguageAbr[TLanguages(LanguageAlpha[lng])]
   // - recreate these table with ModifiedLanguageAbr if LanguageAbr[] changed
   LanguageAlpha: packed array[TLanguages] of byte =
   (3, 21, 59, 13, 55, 54, 31, 4, 5, 6, 8, 7, 9, 10, 11, 12, 14, 15, 56, 16, 17,
    18, 19, 20, 1, 0, 22, 23, 24, 25, 26, 27, 28, 29, 30, 2, 32, 57, 33, 58, 52,
-   34, 35, 37, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 53, 47, 48, 49, 50, 51);
+   34, 35, 37, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 53, 47, 48, 49, 50, 51
+   {$ifdef FPC},60{$endif});
 
   /// US English Windows LCID, i.e. standard international settings
   LCID_US = $0409;
@@ -248,7 +241,6 @@ const
 // - return the current language index in List.Items[]
 function i18nAddLanguageItems(MsgPath: TFileName; List: TStrings): integer;
 
-{$ifndef LVCL}
 /// add sub-menu items to the Menu, for all available languages on disk
 // - uses internaly i18nAddLanguageItems() function above
 // - current language is checked
@@ -262,7 +254,6 @@ procedure i18nAddLanguageMenu(const MsgPath: TFileName; Menu: TMenuItem);
 // - the OnClick event will launch Language.LanguageClick to
 // change the current language in the registry
 procedure i18nAddLanguageCombo(const MsgPath: TFileName; Combo: TComboBox);
-{$endif}
 
 /// save the default language to the registry
 // - language will be changed at next startup
@@ -430,7 +421,7 @@ type
     // - Objects[] contain pointer(Hash32(WinAnsiEncodedMessage))
     // - Strings[] contain Message text, in UnicodeString for Delphi 2009 and up
     Messages: TStringList;
-{$ifndef LVCL} { LVCL will use always the ISO 8601 generic text format }
+{$ifndef LVCL} { LCL will use always the ISO 8601 generic text format }
     /// format string used to convert a date value to a text
     // - the expected format is the one used by the FormatDateTime() function
     // - the current system format, depending on the current language, is used,
@@ -582,7 +573,11 @@ procedure ExtractAllResources(const EnumTypeInfo: array of pointer;
 // - this function add caching and on the fly translation (if LoadResStringTranslate
 // is defined in SynCommons.pas unit)
 // - use "string" type, i.e. UnicodeString for Delphi 2009 and up
+{$ifndef LCL}
 function LoadResString(ResStringRec: PResStringRec): string;
+{$else}
+function LoadResString(ResStringRec: PMyResStringRec): string;
+{$endif}
 {$endif}
 
 
@@ -610,14 +605,13 @@ function DateTime2S(const DateTime: TDateTime): string;
 /// From SynCommons
 ///
 {$ifndef ENHANCEDRTL}
-{$ifndef LVCL} { don't define these twice }
 var
   /// these procedure type must be defined if a default system.pas is used
   // - mORMoti18n.pas unit will hack default LoadResString() procedure
   // - already defined in our Extended system.pas unit
   // - needed with FPC, Delphi 2009 and up, i.e. when ENHANCEDRTL is not defined
   // - expect generic "string" type, i.e. UnicodeString for Delphi 2009+
-  // - not needed with the LVCL framework (we should be on server side)
+  // - not needed with the LCL framework (we should be on server side)
   LoadResStringTranslate: procedure(var Text: string) = nil;
 
   /// current LoadResString() cached entries count
@@ -626,28 +620,24 @@ var
   // - defined here, but resourcestring caching itself is implemented in the
   // mORMoti18n.pas unit, if the ENHANCEDRTL conditional is not defined
   CacheResCount: integer = -1;
-
 {$endif}
-{$endif}
-
 
 implementation
 
 uses
-{$ifndef LVCL}
-  Vcl.ComCtrls,
-  Vcl.Controls,
-  Vcl.ExtCtrls,
-  Vcl.Graphics
-  {$ifdef WITHUXTHEME}
-  , UxTheme,
-  {$endif}
-  ;
-{$else}
+{$ifdef LCL}
   Controls,
   ExtCtrls,
-  Graphics;
+  Graphics
+{$else}
+  vcl.ComCtrls,
+  vcl.Controls,
+  vcl.Graphics
+  {$ifdef WITHUXTHEME}
+  ,UxTheme
+  {$endif}
 {$endif}
+  ;
 
 var
   // to speed up search in LanguageAbrToIndex():
@@ -719,6 +709,9 @@ const
 {$endif}
 
 const
+  {$ifdef FPC}
+  LANG_NONE = Byte(lngDummy);
+  {$endif}
   LANG_MACEDONIAN = $2f;
   LANG_DARI = $8c;
   LANG_PASHTO = $63;
@@ -731,7 +724,7 @@ const
     LANG_SLOVAK,LANG_SLOVENIAN,LANG_ALBANIAN,LANG_SERBIAN,LANG_SWEDISH,0,
     LANG_TURKISH,0,LANG_UKRAINIAN,LANG_VIETNAMESE,LANG_CHINESE,LANG_DUTCH,
     LANG_THAI,LANG_BULGARIAN,LANG_BELARUSIAN,LANG_ESTONIAN,LANG_LATVIAN,
-    LANG_MACEDONIAN,LANG_PASHTO);
+    LANG_MACEDONIAN,LANG_PASHTO {$ifdef FPC},LANG_NONE{$endif});
 
 function LanguageToLCID(Language: TLanguages): integer;
 begin
@@ -869,7 +862,7 @@ begin
   NewJump.Code := $e9;
   NewJump.Distance := integer(PtrUInt(RedirectFunc)-PtrUInt(Func)-SizeOf(NewJump));
   PatchCode(Func,@NewJump,SizeOf(NewJump),Backup,true);
-  {$ifndef LVCL}
+  {$ifndef LCL}
   assert(pByte(Func)^=$e9);
   {$endif}
 end;
@@ -949,28 +942,34 @@ const
         BALTIC_CHARSET, // 'lv' Latvian CP1257 iso-8859-15
         RUSSIAN_CHARSET, // 'mk' Macedonian CP1251, iso-8859-5
         ARABIC_CHARSET // 'ap' Pashto (Afghanistan)
+        {$ifdef FPC}
+        ,DEFAULT_CHARSET // dummy - fix {R-}
+        {$endif}
      );
-
 
 {$ifndef ENHANCEDRTL}
 // code below is extracted from our Extended System.pas unit, and
 // use the generic string type (i.e. UnicodeString for Delphi 2009 and up)
-
 const
   // cache makes it faster, even more when using on the fly translations
   // 512 is a reasonnable value, never reached in practice
   LoadResStringCacheSize = 512;
 
-var CacheRes: array[0..LoadResStringCacheSize-1] of PResStringRec;
-    CacheResValue: array of string;
-    CacheResLast: PResStringRec = nil;
-    CacheResLastIndex: integer = -1;
-    CacheResCriticalSection: TRTLCriticalSection;
-    LastResModule,
-    LastResModuleInst: cardinal;
-    BackupLoadResString: TPatchCode;
-
-    
+var  
+  CacheResValue: array of string;
+  {$ifdef FPC}
+  CacheRes: array[0..LoadResStringCacheSize-1] of PMyResStringRec;
+  CacheResLast: PMyResStringRec = nil;
+  {$else}
+  CacheRes: array[0..LoadResStringCacheSize-1] of PResStringRec;
+  CacheResLast: PResStringRec = nil;
+  {$endif}
+  CacheResLastIndex: integer = -1;
+  CacheResCriticalSection: TSynLocker;
+  LastResModule,
+  LastResModuleInst: cardinal;
+  BackupLoadResString: TPatchCode;
+{$ifndef LCL}
 function LoadResString(ResStringRec: PResStringRec): string;
 var Buffer: array [0..4095] of Char; // char = use the generic string type
     i: integer;
@@ -985,12 +984,14 @@ begin
           ResStringRec.Identifier, Buffer, SizeOf(Buffer))); // direct API call
       exit;
     end;
-    EnterCriticalSection(CacheResCriticalSection); // thread-safe and mostly fast
+    //EnterCriticalSection(CacheResCriticalSection); // thread-safe and mostly fast
+    CacheResCriticalSection.Lock;
     if (ResStringRec=CacheResLast) and
        (CacheRes[CacheResLastIndex].Identifier=ResStringRec.Identifier) and
        (pointer(CacheResValue)<>nil) then begin
       result := CacheResValue[CacheResLastIndex];    // smart cache of values
-      LeaveCriticalSection(CacheResCriticalSection); // manual try..finally = faster
+      //LeaveCriticalSection(CacheResCriticalSection); // manual try..finally = faster
+      CacheResCriticalSection.UnLock;
       exit;
     end;
     i := PtrUIntScanIndex(@CacheRes,CacheResCount,PtrUInt(ResStringRec));
@@ -1001,7 +1002,7 @@ begin
         CacheResLast := ResStringRec;
         CacheResLastIndex := i;
         result := CacheResValue[i]; // smart cache of values
-        LeaveCriticalSection(CacheResCriticalSection); // manual try..finally = faster
+        CacheResCriticalSection.UnLock;
         exit;
       end;
       inc(i); // wrong module -> continue search of this Identifier
@@ -1025,16 +1026,125 @@ begin
       CacheResLastIndex := CacheResCount;
       inc(CacheResCount);
     end;
-    LeaveCriticalSection(CacheResCriticalSection);
+    CacheResCriticalSection.UnLock;
   end else begin
     Result := PChar(ResStringRec.Identifier);
     if Assigned(LoadResStringTranslate) then
       LoadResStringTranslate(Result);
   end;
 end;
+{$else}
+function FindResourceHInstance(Module: HMODULE): TFPResourceHandle;
+begin
+  Result := HInstance;
+end;
 
+function PtrUIntScanIndex(P: PPointerArray; Count: PtrUInt; Value: PtrUInt): PtrInt;
+begin
+  for Result := 0 to Count - 1 do
+    if PtrUInt(P^[Result]) = Value then
+      Exit;
+  Result := -1;
+end;
+
+function LoadStringFromResource(Module: TFPResourceHandle; ResID: Integer; Buffer: PChar; BufferSize: Integer): Integer;
+var
+  ResStream: TResourceStream;
+  ResName: string;
+begin
+  Result := 0;
+  ResName := IntToStr(ResID);
+  try
+    ResStream := TResourceStream.Create(Module, ResName, RT_RCDATA);
+    try
+      Result := ResStream.Read(Buffer^, BufferSize);
+    finally
+      ResStream.Free;
+    end;
+  except
+    on E: Exception do
+      Result := 0; // Handle resource not found or read errors
+  end;
+end;
+
+function LoadResString(ResStringRec: PMyResStringRec): string;
+var
+  Buffer: array[0..4095] of Char;
+  i: integer;
+begin
+  if ResStringRec = nil then
+  begin
+    Result := '';
+    Exit;
+  end;
+
+  if ResStringRec^.Identifier < 64 * 1024 then
+  begin
+    if CacheResCount < 0 then
+    begin
+      // Before initialization or after finalization
+      SetString(Result, Buffer, LoadStringFromResource(FindResourceHInstance(ResStringRec^.Module^), ResStringRec^.Identifier, Buffer, SizeOf(Buffer)));
+      Exit;
+    end;
+
+    CacheResCriticalSection.Lock;
+    try
+      if (ResStringRec = CacheResLast) and
+         (CacheRes[CacheResLastIndex]^.Identifier = ResStringRec^.Identifier) and
+         (Pointer(CacheResValue) <> nil) then
+      begin
+        Result := CacheResValue[CacheResLastIndex];
+        Exit;
+      end;
+
+      i := PtrUIntScanIndex(@CacheRes, CacheResCount, PtrUInt(ResStringRec));
+      if i >= 0 then
+      repeat
+        if (CacheRes[i]^.Identifier = ResStringRec^.Identifier) and
+           (Pointer(CacheResValue) <> nil) then
+        begin
+          CacheResLast := ResStringRec;
+          CacheResLastIndex := i;
+          Result := CacheResValue[i];
+          Exit;
+        end;
+        Inc(i); // Wrong module -> continue search of this Identifier
+        if i >= CacheResCount then Break;
+        i := PtrUIntScanIndex(@CacheRes[i], (CacheResCount - i), PtrUInt(ResStringRec));
+      until i < 0;
+
+      if ResStringRec^.Module^ <> LastResModule then
+      begin
+        LastResModule := ResStringRec^.Module^;
+      end;
+
+      SetString(Result, Buffer, LoadStringFromResource(FindResourceHInstance(ResStringRec^.Module^), ResStringRec^.Identifier, Buffer, SizeOf(Buffer)));
+      if Assigned(LoadResStringTranslate) then
+        LoadResStringTranslate(Result);
+
+      if CacheResCount < LoadResStringCacheSize then
+      begin
+        if Pointer(CacheResValue) = nil then
+          SetLength(CacheResValue, LoadResStringCacheSize);
+        CacheResValue[CacheResCount] := Result;
+        CacheRes[CacheResCount] := ResStringRec;
+        CacheResLast := ResStringRec;
+        CacheResLastIndex := CacheResCount;
+        Inc(CacheResCount);
+      end;
+    finally
+      CacheResCriticalSection.Unlock;
+    end;
+  end
+  else
+  begin
+    Result := PChar(ResStringRec^.Identifier);
+    if Assigned(LoadResStringTranslate) then
+      LoadResStringTranslate(Result);
+  end;
+end;
 {$endif ENHANCEDRTL}
-
+{$endif LCL}
 
 {$ifdef USEFORMCREATEHOOK}
 type
@@ -1069,12 +1179,12 @@ begin
   try
     if Language<>nil then begin
       DisableAlign;
-      DisableAutoRange;
+      //DisableAutoRange;
       try
         Language.FormTranslateOne(self); // translate form
       finally
         EnableAlign;
-        EnableAutoRange;
+        //EnableAutoRange;
       end;
     end;
   finally
@@ -1103,12 +1213,12 @@ begin
   end;
   if Language=nil then exit;
   DisableAlign;
-  DisableAutoRange;
+  //DisableAutoRange;
   try
     Language.FormTranslateOne(self); // translate frame
   finally
     EnableAlign;
-    EnableAutoRange;
+    //EnableAutoRange;
   end;
 end;
 
@@ -1380,14 +1490,14 @@ begin
   // 3. reset all Locale settings + AnsiCompare*() functions
   with CurrentLanguage do begin
     Fill(aLanguage); // init all CurrentLanguage fields for this language
-{$ifndef LVCL}
+//{$ifndef LCL}
     if GetThreadLocale<>LCID then // force locale settings if different
       if SetThreadLocale(LCID) then
         GetFormatSettings; // resets all locale-specific variables
 {$ifdef UNICODE}
     SetMultiByteConversionCodePage(CodePage); // for default AnsiString handling
 {$endif}
-{$endif}
+//{$endif}
     CurrentAnsiConvert := TSynAnsiConvert.Engine(CodePage); // redefine from GetACP
     for c := #0 to #255 do begin
       i18nToUpper[c] := c;
@@ -1396,7 +1506,7 @@ begin
     CharUpperBuffA(i18nToUpper,256); // get values from current user locale
     CharLowerBuffA(i18nToLower,256);
     if not((CharSet in [GB2312_CHARSET,SHIFTJIS_CHARSET,HANGEUL_CHARSET,ARABIC_CHARSET])
-       {$ifndef LVCL} or SysLocale.FarEast{$endif}) and
+        or SysLocale.FarEast) and
       (LanguageCharSet[LCIDToLanguage(GetUserDefaultLCID)]=CharSet) then begin
       // NormToUpper/Lower[] was filled with LOCALE_USER_DEFAULT values
       // -> OK if same CHARSET, and not multi-byte
@@ -1433,7 +1543,7 @@ begin
 {$endif USEFORMCREATEHOOK}
   // we use our custom system.pas unit, which contains already resourcestring caching
   // (we don't have to use critical section here, since call is thread safe)
-{$ifndef LVCL}
+{$ifndef LCL}
   LoadResStringTranslate := GetText; // just set translation function
   CacheResCount := 0; // flush LoadResString() cache
 {$endif}
@@ -1590,14 +1700,14 @@ begin
 {$ifdef USEFORMCREATEHOOK}
   // get language from registry, if USEFORMCREATEHOOK
   i := i18nRegistryToLanguage; // from \Software\CompanyName\i18n\paramstr(0)
-//i := LanguageAbrToIndex('FR'); // DEBUG: load FR.MSG
+  // i := LanguageAbrToIndex('FR'); // DEBUG: load FR.MSG
   if i<>LANGUAGE_NONE then
     SetCurrentLanguage(i,false) else
 {$endif}
 {$endif}
-{$ifndef LVCL} // LVCL doesn't have any SysLocale defined
+//{$ifndef LCL} // LCL doesn't have any SysLocale defined
     SetCurrentLanguage(LCIDToLanguage(SysLocale.DefaultLCID),false);
-{$endif}
+//{$endif}
   // LCID_US = $0409 US English = international settings
   hKernel32 := GetModuleHandle('kernel32');
   if (hKernel32 > 0) then
@@ -1711,9 +1821,9 @@ end;
 {$endif UNICODE}  
 
 procedure TLanguageFile.FormTranslateOne(aForm: TComponent);
-{$ifndef LVCL}
+//{$ifndef LCL}
 var DefCharSet: integer;
-{$endif}
+//{$endif}
 {$ifdef UNICODE} // beginning of the [aForm.Name] section in Text
 var Section: PWideChar; {$else}
 var Section: PUTF8Char; {$endif}
@@ -1743,20 +1853,21 @@ var Section: PUTF8Char; {$endif}
         result := FindMessage(GetCardinalW(@result[2])) else
       if result[1]='%' then begin // from another [FormName] translation
         i := pos('.',result); // DocEdit.Caption=%MainForm.MenuEditor.Caption
-        result := FindIniEntry(Text,RawUTF8(copy(result,2,i-2)),
+        result := FindIniEntryW(Text,RawUTF8(copy(result,2,i-2)),
           RawUTF8(copy(result,i+1,maxInt)));
       end;
     {$else}
         result := FindMessage(GetCardinal(@result[2])) else
       if result[1]='%' then begin // from another [FormName] translation
         i := pos('.',result); // DocEdit.Caption=%MainForm.MenuEditor.Caption
-        result := FindIniEntry(Text,copy(result,2,i-2),copy(result,i+1,maxInt));
+        result := FindWinAnsiIniEntry(Text,copy(result,2,i-2),copy(result,i+1,maxInt));
       end;
     {$endif}
     end;
     procedure TranslateOneProp(ppi: {PPropInfo}PRttiProp; comp: TPersistent; const CompName: RawUTF8);
-    var old: string; oldUtf8: RawUtf8;
+    var old: string;
         text: string;
+        h:cardinal;
     begin
       //old := ppi^.GetGenericStringValue(comp);
       //.TypeInfo^.Name^;
@@ -1765,9 +1876,14 @@ var Section: PUTF8Char; {$endif}
       if Section<>nil then
         text := TranslateOne(CompName,ppi^.NameUtf8);
       if text='' then // if not defined in [aForm.Name] section -> direct translate
+      begin
+        h := Hash32(
+        // resourcestring are expected to be in English, that is WinAnsi encoded
+        {$ifdef UNICODE}UnicodeStringToWinAnsi{$endif}(old));
         text := FindMessage(Hash32(
         // resourcestring are expected to be in English, that is WinAnsi encoded
         {$ifdef UNICODE}UnicodeStringToWinAnsi{$endif}(old)));
+      end;
       if (text<>'') and (old<>text) then
         //ppi^.SetGenericStringValue(comp,text);
         ppi^.SetValueText(comp, text);
@@ -1778,7 +1894,7 @@ var Section: PUTF8Char; {$endif}
         P: {PPropInfo}PRttiProp;
         CL: TClass;
         s: string;
-      {$ifndef LVCL} // doesn't allow to change Font during the run
+      {$ifndef LCL} // doesn't allow to change Font during the run
       procedure DoFont(Font: TFont);
       var s: string;
           CharSet: integer;
@@ -1816,7 +1932,7 @@ var Section: PUTF8Char; {$endif}
           if P^.TypeInfo^.Kind=rkClass then begin
             Obj := P^.GetObjProp(O);
             if Obj<>nil then
-    {$ifndef LVCL} // doesn't allow to change Font during the run
+    {$ifndef LCL} // doesn't allow to change Font during the run
             if Obj.InheritsFrom(TFont) then
               // TFont
               DoFont(TFont(Obj)) else
@@ -1841,14 +1957,14 @@ var Section: PUTF8Char; {$endif}
                 if s<>'' then
                   TStrings(Obj).Strings[j] := s;
               end else
-    {$ifndef LVCL} // LVCL doesn't have any TCollection
+    //{$ifndef LCL} // LCL doesn't have any TCollection
             // TCollection descendents
             if Obj.InheritsFrom(TCollection) then
             with TCollection(Obj) do begin
               for j := 0 to Count-1 do
                 TranslateObj(Items[j],CName+ShortStringToUTF8(P^.NameUtf8)+'['+Int32ToUtf8(j)+'].');
             end else
-    {$endif}// TComponent descendents
+    //{$endif}// TComponent descendents
             if Obj.InheritsFrom(TComponent) then
               DoAll(TComponent(Obj),CName+ShortStringToUTF8(P^.NameUtf8)+'.');
           end;
@@ -1873,7 +1989,7 @@ var Section: PUTF8Char; {$endif}
       // 1. deal with subcomponents, if any
       C := Comp.Components[i];
       if (C.ComponentCount>0)
-        {$ifndef LVCL}and not C.InheritsFrom(TRadioGroup){$endif} then
+        {$ifndef LCL}and not C.InheritsFrom(TRadioGroup){$endif} then
         DoAll(C,ParentName+RawUTF8(C.Name)+'.');
       {$ifdef WITHUXTHEME}
       // 2. Vista
@@ -1896,10 +2012,10 @@ var UpperSection: array[byte] of AnsiChar;
 begin
   if (Self=nil) or (Text='') or (aForm=nil) then
     exit;
-{$ifndef LVCL}
+//{$ifndef LCL}
   DefCharSet := GetDefFontCharSet;
   DefFontData.Charset := Language.CharSet;
-{$endif}
+//{$endif}
   Section := pointer(Text);
   PWord(UpperCopy(UpperSection,RawUTF8(aForm.ClassName)))^ := ord(']');
 {$ifdef UNICODE}
@@ -1987,10 +2103,10 @@ var s: string; // either AnsiString either UnicodeString
     B: boolean;
 begin
   FreeAndNil(Messages);
-  {$ifndef LVCL}
+  //{$ifndef LCL}
   fBooleanToString[false] := B2SS[false];
   fBooleanToString[true] := B2SS[true];
-  {$endif}
+  //{$endif}
   Text := '';
   if not FileExists(aFileName) then
     exit;
@@ -1999,8 +2115,7 @@ begin
   // 2. fill Translation[] and Messages[]
   Messages := TStringList.Create;
   P := pointer(Text);
-{$ifdef UNICODE}
-  
+{$ifdef UNICODE}  
   if FindSectionFirstLineW(P,'MESSAGES]') then     
   while (P<>nil) and (P^<>'[') do begin
     H := GetNextItemCardinalW(P,'=');
@@ -2021,7 +2136,7 @@ begin
     end;
   end;
   Messages.CustomSort(StringListCompareStrings); // sort by Hash32() values
-{$ifndef LVCL}
+{$ifndef LCL}
   tmp := ReadParam('DateFmt');
   if tmp<>'' then
     DateFmt := tmp else
@@ -2090,14 +2205,18 @@ begin
   {$ifdef UNICODE}
   RawUnicodeToUtf8(PWideChar(pointer(Text)),length(Text),result);
   {$else}
-  result := CurrentAnsiConvert.AnsiBufferToRawUTF8(pointer(Text),length(Text));
+    {$ifdef FPC}
+      CurrentAnsiConvert.AnsiBufferToRawUTF8(pointer(Text),length(Text), result);
+    {$else}
+      result := CurrentAnsiConvert.AnsiBufferToRawUTF8(pointer(Text),length(Text));
+    {$endif}
   {$endif}
 end;
 
 function U2S(const Text: RawUTF8): string;
 begin
   {$ifdef UNICODE}
-  UTF8DecodeToUnicodeString(pointer(Text),length(Text),result);
+  result := UTF8DecodeToUnicodeString(pointer(Text),length(Text));
   {$else}
   result := CurrentAnsiConvert.UTF8BufferToAnsi(pointer(Text),length(Text));
   {$endif}
@@ -2201,81 +2320,81 @@ end;
 
 function TLanguageFile.DateToText(const DateTime: TDateTime): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(DateTime,true)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result,DateFmt,DateTime);
 {$endif}
 end;
 
 function TLanguageFile.DateToText(const Time: TTimeLogBits): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(Time.ToDate,true)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result,DateFmt,Time.ToDate);
 {$endif}
 end;
 
 function TLanguageFile.DateToText(const Time: TTimeLog): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(TTimeLogBits(Time).ToDate,true)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(result,DateFmt,TTimeLogBits(Time).ToDate);
 {$endif}
 end;
 
 function TLanguageFile.DateTimeToText(const DateTime: TDateTime): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(DateTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(result, DateTimeFmt, DateTime);
 {$endif}
 end;
 
 function TLanguageFile.DateTimeToText(const Time: TTimeLogBits): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(Time.ToDateTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(result,DateTimeFmt,Time.ToDateTime);
 {$endif}
 end;
 
 function TLanguageFile.DateTimeToText(const Time: TTimeLog): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(TTimeLogBits(Time).ToDateTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result,DateTimeFmt,TTimeLogBits(Time).ToDateTime);
 {$endif}
 end;
 
 function TLanguageFile.TimeToText(const DateTime: TDateTime): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(DateTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result, TimeFmt, DateTime);
 {$endif}
 end;
 
 function TLanguageFile.TimeToText(const Time: TTimeLogBits): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(Time.ToTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result,TimeFmt,Time.ToTime);
 {$endif}
 end;
 
 function TLanguageFile.TimeToText(const Time: TTimeLog): string;
 begin
-{$ifndef LVCL}if Self=nil then{$endif}
+{$ifndef LCL}if Self=nil then{$endif}
     result := DateTimeToIso(TTimeLogBits(Time).ToTime,false)
-{$ifndef LVCL} else
+{$ifndef LCL} else
     DateTimeToString(Result,TimeFmt,TTimeLogBits(Time).ToTime);
 {$endif}
 end;
@@ -2719,6 +2838,10 @@ initialization
   // standard FormatSettings (US)
   {$WARN SYMBOL_DEPRECATED OFF}
   GetLocaleFormatSettings(LCID_US,SettingsUS);
+  {$ifndef NOI18N}
+  i18nDateText :=  Iso2S; // for SynCommons.pas unit
+  i18nDateTimeText := DateTime2S;
+  {$endif}
   {$endif}
   // avoid call nil functions -> set default function to point to
   i18nCompareStr := {$ifdef ENHANCEDRTL}CompareStr{$else}i18nInnerCompareStr{$endif};
@@ -2726,8 +2849,12 @@ initialization
   move(NormToLower,i18nToLower,sizeof(NormToUpper));
   i18nCompareText := i18nInnerCompareText;
 {$ifndef ENHANCEDRTL}
+  {$ifdef FPC}
+  RedirectCode(@LoadResString,@mORmot.i18n.LoadResString,@BackupLoadResString);
+  {$else}
   RedirectCode(@System.LoadResString,@mORmot.i18n.LoadResString,@BackupLoadResString);
-  InitializeCriticalSection(CacheResCriticalSection);
+  CacheResCriticalSection.Init;
+  {$endif}
 {$endif}
 {$ifndef NOI18N}
   LangInit; // do redirection + init user default locale (from Win32 or registry)
@@ -2746,9 +2873,14 @@ finalization
 {$endif}
 {$endif}
 {$ifndef ENHANCEDRTL}
+  {$ifdef FPC}
+  RedirectCodeRestore(@LoadResString,BackupLoadResString);
+  {$else}
   RedirectCodeRestore(@System.LoadResString,BackupLoadResString);
-  DeleteCriticalSection(CacheResCriticalSection);
+  {$endif}
+  CacheResCriticalSection.Done;
 {$endif}
 end.
+
 
 
